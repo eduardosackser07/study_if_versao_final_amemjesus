@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .xp-bar { transition: width 1s ease; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-5xl mx-auto flex justify-between items-center gap-4">
+        <h1 class="text-2xl font-black text-blue-500 italic shrink-0">study_if</h1>
+
+        <!-- XP + Patente (centro) -->
+        <div id="xp-nav" class="hidden flex-1 max-w-xs">
+            <div class="flex items-center gap-2 mb-1">
+                <span id="nav-patente-icone" class="text-lg">🎒</span>
+                <span id="nav-patente-nome" class="text-xs font-black" style="color:#94a3b8">Calouro</span>
+                <span class="text-xs text-slate-600 ml-auto" id="nav-xp-texto">0 XP</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div class="xp-bar h-1.5 rounded-full" id="nav-xp-bar" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+            <a href="/ranking.html" class="text-slate-400 hover:text-yellow-400 transition text-sm font-semibold hidden sm:block">🏆</a>
+            <a href="/perfil.html" class="text-slate-400 hover:text-white transition text-sm font-semibold hidden sm:block">Perfil</a>
+            <button onclick="fazerLogout()" class="text-slate-500 hover:text-red-400 transition text-sm">Sair</button>
+        </div>
+    </div>
+</nav>
+
+<main class="flex-grow max-w-5xl mx-auto px-6 py-12 w-full">
+
+    <div class="text-center mb-12">
+        <h2 class="text-4xl font-extrabold mb-3">O que vamos estudar hoje?</h2>
+        <p id="saudacao" class="text-slate-400 text-lg">Carregando...</p>
+    </div>
+
+    <!-- Cards principais -->
+    <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-8">
+
+        <a href="/dashboard.html" class="group bg-slate-900 p-8 rounded-3xl border border-slate-800 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 flex flex-col items-center text-center">
+            <div class="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform border border-blue-500/20">
+                <span class="text-4xl">🗂️</span>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Flashcards</h3>
+            <p class="text-slate-500 mb-5 text-sm">Memorização ativa com repetição espaçada.</p>
+            <span class="text-blue-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">Acessar Baralhos →</span>
+        </a>
+
+        <a href="/questoes.html" class="group bg-slate-900 p-8 rounded-3xl border border-slate-800 hover:border-emerald-500 hover:shadow-xl hover:shadow-emerald-500/10 transition-all duration-300 flex flex-col items-center text-center">
+            <div class="w-20 h-20 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform border border-emerald-500/20">
+                <span class="text-4xl">📝</span>
+            </div>
+            <h3 class="text-2xl font-bold mb-2">Questões</h3>
+            <p class="text-slate-500 mb-5 text-sm">Simulados personalizados e Simuladão IFSul.</p>
+            <span class="text-emerald-400 font-semibold text-sm group-hover:translate-x-1 transition-transform">Praticar Agora →</span>
+        </a>
+
+    </div>
+
+    <!-- Cards secundários -->
+    <div class="grid grid-cols-3 gap-4 max-w-3xl mx-auto">
+
+        <a href="/ranking.html" class="group bg-slate-900 border border-slate-800 hover:border-yellow-500/50 p-5 rounded-2xl text-center transition-all">
+            <div class="text-3xl mb-2">🏆</div>
+            <div class="font-bold text-sm">Ranking</div>
+            <div class="text-slate-500 text-xs mt-1">Global & Clãs</div>
+        </a>
+
+        <a href="/clan.html" class="group bg-slate-900 border border-slate-800 hover:border-purple-500/50 p-5 rounded-2xl text-center transition-all">
+            <div class="text-3xl mb-2">🏛️</div>
+            <div class="font-bold text-sm">Meu Clã</div>
+            <div class="text-slate-500 text-xs mt-1">Competir em grupo</div>
+        </a>
+
+        <a href="/estatisticas.html" class="group bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-5 rounded-2xl text-center transition-all">
+            <div class="text-3xl mb-2">📊</div>
+            <div class="font-bold text-sm">Estatísticas</div>
+            <div class="text-slate-500 text-xs mt-1">Seu desempenho</div>
+        </a>
+
+    </div>
+
+</main>
+
+<script>
+    async function carregarHome() {
+        try {
+            const [resUser, resPerfil] = await Promise.all([
+                fetch('/api/user-data'),
+                fetch('/api/ranking/meu-perfil').catch(() => null)
+            ]);
+
+            if (resUser.ok) {
+                const user = await resUser.json();
+                const hora = new Date().getHours();
+                const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+                document.getElementById('saudacao').innerText = `${saudacao}, ${user.username?.split(' ')[0] || 'estudante'}! 👋`;
+            }
+
+            if (resPerfil && resPerfil.ok) {
+                const perfil = await resPerfil.json();
+                const p = perfil.patente;
+
+                document.getElementById('nav-patente-icone').innerText = p.icone;
+                document.getElementById('nav-patente-nome').innerText = p.nome;
+                document.getElementById('nav-patente-nome').style.color = p.cor;
+                document.getElementById('nav-xp-texto').innerText = perfil.xpTotal.toLocaleString() + ' XP';
+                document.getElementById('nav-xp-bar').style.background = p.cor;
+                document.getElementById('xp-nav').classList.remove('hidden');
+
+                setTimeout(() => {
+                    document.getElementById('nav-xp-bar').style.width = p.progressoPct + '%';
+                }, 200);
+            }
+        } catch(e) {}
+    }
+
+    function fazerLogout() {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/logout';
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    window.onload = carregarHome;
+</script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulado - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .alternativa-btn { transition: all 0.15s ease; }
+        .alternativa-btn:hover:not(.selecionada):not(.correta):not(.errada) { transform: translateX(4px); }
+        .selecionada { border-color: #3b82f6 !important; background-color: rgba(59,130,246,0.1); }
+        .correta  { border-color: #10b981 !important; background-color: rgba(16,185,129,0.15) !important; }
+        .errada   { border-color: #ef4444 !important; background-color: rgba(239,68,68,0.1) !important; }
+        .timer-urgente { animation: piscar 1s infinite; }
+        @keyframes piscar { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<!-- Barra superior fixa -->
+<header class="fixed top-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 z-40">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+
+        <!-- Progresso -->
+        <div class="flex-1">
+            <div class="flex justify-between text-xs text-slate-400 mb-1">
+                <span>Questão <span id="num-atual">1</span> de <span id="num-total">?</span></span>
+                <span id="badge-tipo" class="font-bold uppercase text-blue-400">Simulado</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-1.5">
+                <div id="barra-progresso" class="bg-blue-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div>
+            </div>
+        </div>
+
+        <!-- Timer -->
+        <div id="timer-container" class="hidden">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-center min-w-[80px]">
+                <div id="timer-display" class="text-lg font-black font-mono text-white">--:--</div>
+                <div class="text-[10px] text-slate-500 uppercase font-bold">restante</div>
+            </div>
+        </div>
+
+        <!-- Botão finalizar -->
+        <button onclick="confirmarFinalizarAntecipado()"
+                class="text-xs text-slate-400 hover:text-red-400 font-semibold transition px-3 py-2 rounded-lg hover:bg-red-500/10">
+            Encerrar
+        </button>
+    </div>
+</header>
+
+<!-- Conteúdo principal -->
+<main class="max-w-3xl mx-auto px-4 pt-24 pb-32">
+    <div id="questao-container">
+        <!-- preenchido via JS -->
+        <div class="text-center py-20 text-slate-500">Carregando questão...</div>
+    </div>
+</main>
+
+<!-- Rodapé fixo com navegação -->
+<footer class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur border-t border-slate-800 z-40">
+    <div class="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+
+        <button id="btn-anterior" onclick="irPara(questaoAtual - 1)"
+                class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-sm font-bold transition disabled:opacity-30"
+                disabled>← Anterior</button>
+
+        <!-- Mapa de questões (miniaturas) -->
+        <div id="mapa-questoes" class="flex flex-wrap gap-1 justify-center flex-1 overflow-hidden max-h-10">
+            <!-- preenchido via JS -->
+        </div>
+
+        <button id="btn-proxima" onclick="proximaQuestao()"
+                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold transition">
+            Próxima →
+        </button>
+    </div>
+</footer>
+
+<script>
+    let questoes = [];
+    let respostas = {}; // questionId -> alternativaId
+    let questaoAtual = 0;
+    let simuladoId = null;
+    let tempoLimiteSegundos = null;
+    let tempoDecorrido = 0;
+    let timerInterval = null;
+    let tipoSimulado = '';
+
+    function init() {
+        const dados = sessionStorage.getItem('simulado_dados');
+        if (!dados) { window.location.href = '/questoes.html'; return; }
+
+        const parsed = JSON.parse(dados);
+        questoes = parsed.questoes;
+        simuladoId = parsed.simuladoId;
+        tempoLimiteSegundos = parsed.tempoLimiteSegundos || null;
+        tipoSimulado = parsed.tipo || 'PERSONALIZADO';
+
+        document.getElementById('num-total').innerText = questoes.length;
+        document.getElementById('badge-tipo').innerText = tipoSimulado === 'IFSUL' ? '🏆 IFSul' : '🎯 Personalizado';
+
+        renderizarMapa();
+        renderizarQuestao(0);
+
+        if (tempoLimiteSegundos) {
+            iniciarTimer();
+        }
+    }
+
+    function renderizarMapa() {
+        const mapa = document.getElementById('mapa-questoes');
+        mapa.innerHTML = questoes.map((q, i) => `
+            <button id="mapa-${i}" onclick="irPara(${i})"
+                    class="w-6 h-6 rounded text-[10px] font-bold transition border border-slate-700 bg-slate-800 hover:bg-slate-600 text-slate-400">
+                ${i + 1}
+            </button>
+        `).join('');
+    }
+
+    function renderizarQuestao(idx) {
+        questaoAtual = idx;
+        const q = questoes[idx];
+        if (!q) return;
+
+        const respondida = respostas[q.idQuestao];
+        const total = questoes.length;
+        const pct = ((idx) / total) * 100;
+
+        document.getElementById('num-atual').innerText = idx + 1;
+        document.getElementById('barra-progresso').style.width = pct + '%';
+        document.getElementById('btn-anterior').disabled = idx === 0;
+
+        const btnProx = document.getElementById('btn-proxima');
+        if (idx === total - 1) {
+            btnProx.innerText = 'Finalizar ✓';
+            btnProx.classList.replace('bg-blue-600', 'bg-emerald-600');
+            btnProx.classList.replace('hover:bg-blue-700', 'hover:bg-emerald-700');
+            btnProx.onclick = () => confirmarFinalizar();
+        } else {
+            btnProx.innerText = 'Próxima →';
+            btnProx.classList.replace('bg-emerald-600', 'bg-blue-600');
+            btnProx.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
+            btnProx.onclick = () => proximaQuestao();
+        }
+
+        // Atualiza mapa
+        document.querySelectorAll('[id^="mapa-"]').forEach((el, i) => {
+            el.className = 'w-6 h-6 rounded text-[10px] font-bold transition border';
+            if (i === idx) {
+                el.className += ' border-blue-500 bg-blue-500 text-white';
+            } else if (respostas[questoes[i]?.idQuestao]) {
+                el.className += ' border-emerald-700 bg-emerald-900 text-emerald-400';
+            } else {
+                el.className += ' border-slate-700 bg-slate-800 text-slate-500 hover:bg-slate-600';
+            }
+        });
+
+        // Renderiza questão
+        const letras = ['A', 'B', 'C', 'D', 'E'];
+        const alts = (q.alternatives || []).map((alt, i) => {
+            const marcada = respondida === alt.alternativeId;
+            return `
+                <button id="alt-${alt.alternativeId}"
+                        onclick="selecionarAlternativa(${q.idQuestao}, ${alt.alternativeId})"
+                        class="alternativa-btn w-full text-left flex items-start gap-4 p-4 rounded-xl border border-slate-700 bg-slate-900 hover:border-slate-500 ${marcada ? 'selecionada' : ''}">
+                    <span class="w-8 h-8 rounded-lg border ${marcada ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-600 bg-slate-800 text-slate-400'} flex items-center justify-center text-sm font-black shrink-0 mt-0.5">
+                        ${alt.letra || letras[i] || '?'}
+                    </span>
+                    <span class="text-slate-200 text-sm leading-relaxed">${alt.altText}</span>
+                </button>
+            `;
+        }).join('');
+
+        document.getElementById('questao-container').innerHTML = `
+            <div class="mb-6">
+                <div class="flex items-center gap-2 mb-4">
+                    ${q.category ? `<span class="text-xs font-black uppercase px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full">${q.category.name}</span>` : ''}
+                    ${q.fonte ? `<span class="text-xs text-slate-500">${q.fonte}</span>` : ''}
+                    ${q.ano ? `<span class="text-xs text-slate-600">${q.ano}</span>` : ''}
+                </div>
+                <p class="text-white text-lg leading-relaxed font-medium">${q.questionText}</p>
+            </div>
+            <div class="space-y-3">
+                ${alts}
+            </div>
+            <div id="feedback-msg" class="mt-4 hidden"></div>
+        `;
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function selecionarAlternativa(questionId, altId) {
+        respostas[questionId] = altId;
+
+        // Atualiza visual das alternativas
+        const q = questoes[questaoAtual];
+        renderizarQuestao(questaoAtual);
+    }
+
+    function proximaQuestao() {
+        if (questaoAtual < questoes.length - 1) {
+            irPara(questaoAtual + 1);
+        } else {
+            confirmarFinalizar();
+        }
+    }
+
+    function irPara(idx) {
+        if (idx < 0 || idx >= questoes.length) return;
+        renderizarQuestao(idx);
+    }
+
+    function confirmarFinalizar() {
+        const respondidas = Object.keys(respostas).length;
+        const naoRespondidas = questoes.length - respondidas;
+
+        let msg = `Finalizar simulado?\n\nRespondidas: ${respondidas}/${questoes.length}`;
+        if (naoRespondidas > 0) msg += `\nQuestões em branco: ${naoRespondidas}`;
+
+        if (confirm(msg)) finalizar(true);
+    }
+
+    function confirmarFinalizarAntecipado() {
+        if (confirm('Encerrar o simulado agora? As respostas já marcadas serão salvas.')) {
+            finalizar(false);
+        }
+    }
+
+    async function finalizar(concluido) {
+        clearInterval(timerInterval);
+        mostrarLoading(true);
+
+        const listaRespostas = questoes.map(q => ({
+            questionId: q.idQuestao,
+            alternativaEscolhidaId: respostas[q.idQuestao] || null
+        }));
+
+        try {
+            const res = await fetch('/api/simulado/finalizar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    simuladoId,
+                    tempoGastoSegundos: tempoDecorrido,
+                    concluido,
+                    respostas: listaRespostas
+                })
+            });
+
+            const data = await res.json();
+            sessionStorage.removeItem('simulado_dados');
+            sessionStorage.setItem('simulado_resultado', JSON.stringify({
+                simuladoId,
+                ...data
+            }));
+            window.location.href = `/resultado-simulado.html?id=${simuladoId}`;
+        } catch(e) {
+            alert('Erro ao salvar. Tente novamente.');
+            mostrarLoading(false);
+        }
+    }
+
+    // Timer
+    function iniciarTimer() {
+        const container = document.getElementById('timer-container');
+        container.classList.remove('hidden');
+
+        let restante = tempoLimiteSegundos;
+
+        timerInterval = setInterval(() => {
+            tempoDecorrido++;
+            restante--;
+
+            if (restante <= 0) {
+                clearInterval(timerInterval);
+                alert('⏰ Tempo esgotado! Seu simulado será finalizado.');
+                finalizar(false);
+                return;
+            }
+
+            atualizarTimerDisplay(restante);
+
+            if (restante <= 300) { // últimos 5 minutos
+                document.getElementById('timer-display').classList.add('timer-urgente', 'text-red-400');
+                document.getElementById('timer-display').classList.remove('text-white');
+            } else if (restante <= 600) { // últimos 10 minutos
+                document.getElementById('timer-display').classList.add('text-yellow-400');
+                document.getElementById('timer-display').classList.remove('text-white');
+            }
+        }, 1000);
+
+        atualizarTimerDisplay(restante);
+    }
+
+    function atualizarTimerDisplay(segundos) {
+        const h = Math.floor(segundos / 3600);
+        const m = Math.floor((segundos % 3600) / 60);
+        const s = segundos % 60;
+
+        let display;
+        if (h > 0) {
+            display = `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        } else {
+            display = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+        document.getElementById('timer-display').innerText = display;
+    }
+
+    // Incrementa tempo decorrido mesmo sem timer visual
+    if (!tempoLimiteSegundos) {
+        setInterval(() => { tempoDecorrido++; }, 1000);
+    }
+
+    function mostrarLoading(show) {
+        // Simples overlay de loading
+        if (show) {
+            document.body.insertAdjacentHTML('beforeend', `
+                <div id="overlay-loading" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+                    <div class="text-center">
+                        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p class="text-slate-300">Salvando resultado...</p>
+                    </div>
+                </div>
+            `);
+        }
+    }
+
+    window.onload = init;
+
+    // Contador de tempo mesmo sem timer visual
+    setInterval(() => {
+        if (!tempoLimiteSegundos) tempoDecorrido++;
+    }, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Cards - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+        <a href="/dashboard.html" class="text-slate-400 hover:text-white transition text-sm font-semibold">← Baralhos</a>
+        <span class="text-xl font-black text-blue-500 italic">study_if</span>
+        <div></div>
+    </div>
+</nav>
+
+<main class="max-w-4xl mx-auto px-6 py-10">
+
+    <!-- Formulário -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-7 mb-8">
+        <h2 id="form-titulo" class="text-2xl font-bold mb-1">Adicionar Card</h2>
+        <p class="text-slate-500 text-sm mb-6">Crie perguntas e respostas para o seu baralho.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs font-black uppercase text-slate-500 mb-2">Frente (Pergunta)</label>
+                <textarea id="input-frente" rows="4" placeholder="Ex: Qual a capital da França?"
+                          class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition resize-none text-sm"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-black uppercase text-slate-500 mb-2">Verso (Resposta)</label>
+                <textarea id="input-verso" rows="4" placeholder="Ex: Paris"
+                          class="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-blue-500 transition resize-none text-sm"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button id="btn-salvar" onclick="adicionarCard()"
+                    class="px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-lg">
+                + Adicionar Card
+            </button>
+            <button id="btn-cancelar" onclick="limparFormulario()"
+                    class="hidden px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition text-sm">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- Lista de cards -->
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold text-slate-300">Cards neste Baralho</h3>
+        <span id="contador-cards" class="bg-slate-800 border border-slate-700 text-slate-400 text-xs font-bold px-3 py-1 rounded-full">0 cards</span>
+    </div>
+
+    <div id="cards-lista" class="space-y-3"></div>
+
+</main>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const deckId = urlParams.get('id');
+    let cardIdParaEditar = null;
+
+    if (!deckId) { alert('Baralho não identificado!'); window.location.href = '/dashboard.html'; }
+
+    async function carregarCards() {
+        try {
+            const res = await fetch(`/api/flashcards/deck/${deckId}`);
+            const cards = await res.json();
+            document.getElementById('contador-cards').innerText = `${cards.length} cards`;
+            renderizarCards(cards);
+        } catch(e) { console.error(e); }
+    }
+
+    function renderizarCards(cards) {
+        const lista = document.getElementById('cards-lista');
+        lista.innerHTML = '';
+
+        if (!cards.length) {
+            lista.innerHTML = `
+                <div class="text-center py-16 bg-slate-900 border border-dashed border-slate-700 rounded-2xl">
+                    <div class="text-4xl mb-3">🃏</div>
+                    <p class="text-slate-500">Nenhum card criado ainda. Adicione o primeiro acima!</p>
+                </div>`;
+            return;
+        }
+
+        cards.forEach(card => {
+            const fEsc = card.front.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const bEsc = card.back.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+            // Badge de intervalo SM-2
+            let intervalo = '';
+            if (card.proximaRevisao) {
+                const hoje = new Date().toISOString().split('T')[0];
+                const vence = card.proximaRevisao;
+                intervalo = vence <= hoje
+                    ? `<span class="text-[10px] font-bold px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">Revisar hoje</span>`
+                    : `<span class="text-[10px] text-slate-600">próx: ${new Date(vence + 'T12:00:00').toLocaleDateString('pt-BR')}</span>`;
+            } else {
+                intervalo = `<span class="text-[10px] text-slate-600">Novo</span>`;
+            }
+
+            lista.innerHTML += `
+                <div class="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-xl p-5 flex items-start gap-4 transition">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-w-0">
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-blue-400 block mb-1">Frente</span>
+                            <p class="text-sm text-slate-200 leading-relaxed">${card.front}</p>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-emerald-400 block mb-1">Verso</span>
+                            <p class="text-sm text-slate-400 leading-relaxed">${card.back}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-2 shrink-0">
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="prepararEdicao(${card.flashcardId}, '${fEsc}', '${bEsc}')"
+                                    class="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition" title="Editar">✏️</button>
+                            <button onclick="deletarCard(${card.flashcardId})"
+                                    class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition" title="Excluir">🗑️</button>
+                        </div>
+                        ${intervalo}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function prepararEdicao(id, front, back) {
+        cardIdParaEditar = id;
+        document.getElementById('input-frente').value = front;
+        document.getElementById('input-verso').value = back;
+        document.getElementById('form-titulo').innerText = 'Editar Card';
+
+        const btn = document.getElementById('btn-salvar');
+        btn.innerText = '💾 Salvar Alterações';
+        btn.classList.replace('bg-blue-600','bg-emerald-600');
+        btn.classList.replace('hover:bg-blue-700','hover:bg-emerald-700');
+        document.getElementById('btn-cancelar').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function limparFormulario() {
+        cardIdParaEditar = null;
+        document.getElementById('input-frente').value = '';
+        document.getElementById('input-verso').value = '';
+        document.getElementById('form-titulo').innerText = 'Adicionar Card';
+
+        const btn = document.getElementById('btn-salvar');
+        btn.innerText = '+ Adicionar Card';
+        btn.classList.replace('bg-emerald-600','bg-blue-600');
+        btn.classList.replace('hover:bg-emerald-700','hover:bg-blue-700');
+        document.getElementById('btn-cancelar').classList.add('hidden');
+    }
+
+    async function adicionarCard() {
+        const f = document.getElementById('input-frente').value.trim();
+        const b = document.getElementById('input-verso').value.trim();
+        if (!f || !b) return alert('Preencha frente e verso!');
+
+        const url    = cardIdParaEditar ? `/api/flashcards/${cardIdParaEditar}` : `/api/flashcards/deck/${deckId}`;
+        const metodo = cardIdParaEditar ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ front: f, back: b })
+        });
+
+        if (res.ok) { limparFormulario(); carregarCards(); }
+        else alert('Erro ao salvar card.');
+    }
+
+    async function deletarCard(id) {
+        if (!confirm('Apagar este card?')) return;
+        const res = await fetch(`/api/flashcards/${id}`, { method: 'DELETE' });
+        if (res.ok) carregarCards();
+    }
+
+    window.onload = carregarCards;
+</script>
+</body>
+</html>

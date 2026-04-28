@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clã - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+        <a href="/home" class="text-slate-400 hover:text-white transition text-sm font-semibold">← Início</a>
+        <span class="text-xl font-black text-blue-500 italic">study_if</span>
+        <a href="/ranking.html" class="text-slate-400 hover:text-yellow-400 transition text-sm font-semibold">🏆 Ranking</a>
+    </div>
+</nav>
+
+<main class="max-w-4xl mx-auto px-4 py-10">
+
+    <div id="loading" class="text-center py-24 text-slate-500">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    </div>
+
+    <!-- SEM CLÃ -->
+    <div id="view-sem-clan" class="hidden space-y-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-black mb-2">🏛️ Clãs</h1>
+            <p class="text-slate-400">Junte-se a amigos e compita no ranking coletivo.</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-6">
+            <!-- Criar clã -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-7">
+                <div class="text-3xl mb-3">⚔️</div>
+                <h2 class="text-xl font-bold mb-1">Criar Clã</h2>
+                <p class="text-slate-400 text-sm mb-5">Seja o líder. Defina o nome, escolha um ícone e convide seus amigos.</p>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-black uppercase text-slate-500 block mb-1">Ícone do Clã</label>
+                        <div id="icones-grid" class="flex flex-wrap gap-2 mb-1">
+                            <!-- preenchido via JS -->
+                        </div>
+                        <input type="hidden" id="icone-selecionado" value="🏛️">
+                    </div>
+                    <div>
+                        <label class="text-xs font-black uppercase text-slate-500 block mb-1">Nome do Clã</label>
+                        <input type="text" id="input-nome-clan" maxlength="30" placeholder="Ex: Os Aprovados"
+                               class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+                    </div>
+                    <div>
+                        <label class="text-xs font-black uppercase text-slate-500 block mb-1">Descrição (opcional)</label>
+                        <input type="text" id="input-desc-clan" maxlength="80" placeholder="Ex: Turma do 3º ano"
+                               class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+                    </div>
+                    <button onclick="criarClan()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-lg">
+                        Criar Clã
+                    </button>
+                </div>
+            </div>
+
+            <!-- Entrar com código -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-7">
+                <div class="text-3xl mb-3">🔑</div>
+                <h2 class="text-xl font-bold mb-1">Entrar com Código</h2>
+                <p class="text-slate-400 text-sm mb-5">Seu amigo criou um clã? Digite o código de convite para entrar.</p>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-black uppercase text-slate-500 block mb-1">Código de Convite</label>
+                        <input type="text" id="input-codigo" maxlength="6" placeholder="Ex: XK9F2A"
+                               class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 transition uppercase tracking-widest text-center text-lg font-black"
+                               oninput="this.value = this.value.toUpperCase()">
+                    </div>
+                    <button onclick="entrarClan()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition shadow-lg">
+                        Entrar no Clã
+                    </button>
+                </div>
+
+                <!-- Ranking de clãs no lado sem clã -->
+                <div class="mt-6 pt-6 border-t border-slate-800">
+                    <div class="text-xs font-black uppercase text-slate-500 mb-3">Top Clãs</div>
+                    <div id="top-clans-mini" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COM CLÃ -->
+    <div id="view-com-clan" class="hidden space-y-6">
+
+        <!-- Header do clã -->
+        <div id="clan-header" class="rounded-2xl border p-7"></div>
+
+        <!-- Stats do clã -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="clan-stat-membros" class="text-3xl font-black text-blue-400 mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Membros</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="clan-stat-pontos" class="text-3xl font-black text-yellow-400 mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Pontos Totais</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="clan-stat-taxa" class="text-3xl font-black mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Taxa Média</div>
+            </div>
+        </div>
+
+        <!-- Código de convite -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center justify-between gap-4">
+            <div>
+                <div class="text-xs font-black uppercase text-slate-500 mb-1">Código de Convite</div>
+                <div id="codigo-convite" class="text-2xl font-black tracking-widest text-white">–</div>
+                <div class="text-xs text-slate-600 mt-1">Compartilhe com seus amigos para eles entrarem</div>
+            </div>
+            <button onclick="copiarCodigo()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition shrink-0">
+                📋 Copiar
+            </button>
+        </div>
+
+        <!-- Ranking dos membros -->
+        <div>
+            <h2 class="text-base font-bold mb-3 text-slate-300">👥 Ranking do Clã</h2>
+            <div id="ranking-membros" class="space-y-2"></div>
+        </div>
+
+        <!-- Sair do clã -->
+        <div class="pt-4">
+            <button onclick="confirmarSair()"
+                    class="w-full py-3 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-500 rounded-xl font-bold transition text-sm border border-slate-700 hover:border-red-500/30">
+                Sair do Clã
+            </button>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const icones = ['🏛️','⚔️','🔥','🧠','📚','🎓','🌟','💪','🚀','🦅','🐉','💎','⚡','🌙','🏆'];
+    let iconeSelecionado = '🏛️';
+    let meuClanId = null;
+
+    async function carregarPagina() {
+        // Carrega top clãs para o mini-ranking
+        fetch('/api/clan/ranking').then(r => r.json()).then(renderTopClansMini).catch(() => {});
+
+        try {
+            const res = await fetch('/api/clan/meu');
+            const data = await res.json();
+            document.getElementById('loading').classList.add('hidden');
+
+            if (data.clan === null || data.id === undefined) {
+                mostrarSemClan();
+            } else {
+                meuClanId = data.id;
+                mostrarComClan(data);
+            }
+        } catch(e) {
+            document.getElementById('loading').innerText = 'Erro ao carregar.';
+        }
+    }
+
+    function mostrarSemClan() {
+        document.getElementById('view-sem-clan').classList.remove('hidden');
+        renderizarIcones();
+    }
+
+    function renderizarIcones() {
+        const grid = document.getElementById('icones-grid');
+        grid.innerHTML = icones.map(ic => `
+            <button onclick="selecionarIcone('${ic}')" id="icone-btn-${ic}"
+                    class="text-2xl w-10 h-10 rounded-xl hover:bg-slate-700 transition border ${ic === iconeSelecionado ? 'border-blue-500 bg-blue-500/20' : 'border-slate-700 bg-slate-800'}">
+                ${ic}
+            </button>
+        `).join('');
+    }
+
+    function selecionarIcone(ic) {
+        iconeSelecionado = ic;
+        document.getElementById('icone-selecionado').value = ic;
+        renderizarIcones();
+    }
+
+    function mostrarComClan(data) {
+        document.getElementById('view-com-clan').classList.remove('hidden');
+
+        // Header
+        const header = document.getElementById('clan-header');
+        header.style.borderColor = '#3b82f640';
+        header.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(15,23,42,0.95) 60%)';
+        header.innerHTML = `
+            <div class="flex items-center gap-5">
+                <div class="text-6xl">${data.icone}</div>
+                <div>
+                    <div class="text-3xl font-black">${data.nome}</div>
+                    ${data.descricao ? `<div class="text-slate-400 text-sm mt-1">${data.descricao}</div>` : ''}
+                    <div class="text-xs text-slate-600 mt-2">👑 Liderado por ${data.liderNome}</div>
+                </div>
+            </div>`;
+
+        document.getElementById('clan-stat-membros').innerText = data.totalMembros;
+        document.getElementById('clan-stat-pontos').innerText = data.totalPontos.toLocaleString();
+
+        const taxaEl = document.getElementById('clan-stat-taxa');
+        taxaEl.innerText = data.taxaMediaAcerto + '%';
+        taxaEl.className = 'text-3xl font-black mb-1 ' + corPct(data.taxaMediaAcerto);
+
+        document.getElementById('codigo-convite').innerText = data.codigoConvite;
+
+        // Ranking membros
+        const ranking = document.getElementById('ranking-membros');
+        ranking.innerHTML = data.membros.map(m => `
+            <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 border border-slate-800">
+                <span class="text-slate-500 font-black text-sm w-5 shrink-0">${m.posicao}</span>
+                <span class="text-xl shrink-0">${m.patenteIcone}</span>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-sm truncate flex items-center gap-2">
+                        ${m.username}
+                        ${m.eLider ? '<span class="text-[10px] text-yellow-400 font-black">👑 Líder</span>' : ''}
+                    </div>
+                    <div class="text-[10px] font-bold mt-0.5" style="color:${m.patenteCor}">${m.patente}</div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="font-black text-sm">${m.pontos.toLocaleString()}</div>
+                    <div class="text-[10px] text-slate-500">pts</div>
+                </div>
+                <div class="text-right shrink-0 hidden sm:block">
+                    <div class="text-xs font-bold ${corPct(m.taxaAcerto)}">${m.taxaAcerto}%</div>
+                    ${m.streakDias >= 3 ? `<div class="text-[10px] text-orange-400">🔥${m.streakDias}d</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTopClansMini(clans) {
+        const container = document.getElementById('top-clans-mini');
+        if (!clans.length) {
+            container.innerHTML = '<div class="text-slate-600 text-xs">Nenhum clã criado ainda.</div>';
+            return;
+        }
+        const medalhas = ['🥇','🥈','🥉'];
+        container.innerHTML = clans.slice(0, 3).map((c, i) => `
+            <div class="flex items-center gap-2 py-1">
+                <span class="text-sm">${medalhas[i]}</span>
+                <span class="text-base">${c.icone}</span>
+                <span class="text-sm font-bold flex-1 truncate">${c.nome}</span>
+                <span class="text-xs text-slate-500">${c.totalPontos.toLocaleString()} pts</span>
+            </div>
+        `).join('');
+    }
+
+    async function criarClan() {
+        const nome  = document.getElementById('input-nome-clan').value.trim();
+        const desc  = document.getElementById('input-desc-clan').value.trim();
+        const icone = iconeSelecionado;
+
+        if (!nome) { alert('Digite um nome para o clã!'); return; }
+
+        try {
+            const res = await fetch('/api/clan/criar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, descricao: desc, icone })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.erro || 'Erro ao criar clã.'); return; }
+
+            alert(`✅ ${data.mensagem}\nCódigo de convite: ${data.codigoConvite}`);
+            window.location.reload();
+        } catch(e) {
+            alert('Erro de conexão.');
+        }
+    }
+
+    async function entrarClan() {
+        const codigo = document.getElementById('input-codigo').value.trim().toUpperCase();
+        if (codigo.length !== 6) { alert('O código tem 6 caracteres!'); return; }
+
+        try {
+            const res = await fetch('/api/clan/entrar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ codigo })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.erro || 'Erro.'); return; }
+
+            alert('✅ ' + data.mensagem);
+            window.location.reload();
+        } catch(e) {
+            alert('Erro de conexão.');
+        }
+    }
+
+    async function confirmarSair() {
+        if (!confirm('Tem certeza que deseja sair do clã?\nSe você for o líder, a liderança passará para o próximo membro.')) return;
+
+        try {
+            const res = await fetch('/api/clan/sair', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) { alert(data.erro || 'Erro.'); return; }
+            alert(data.mensagem);
+            window.location.reload();
+        } catch(e) {
+            alert('Erro de conexão.');
+        }
+    }
+
+    function copiarCodigo() {
+        const codigo = document.getElementById('codigo-convite').innerText;
+        navigator.clipboard.writeText(codigo).then(() => {
+            alert('Código copiado! 📋\n\n' + codigo);
+        });
+    }
+
+    function corPct(pct) {
+        return pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+    }
+
+    window.onload = carregarPagina;
+</script>
+</body>
+</html>

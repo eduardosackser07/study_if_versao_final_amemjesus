@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+        <a href="/home" class="text-slate-400 hover:text-white transition text-sm font-semibold">← Início</a>
+        <span class="text-xl font-black text-blue-500 italic">study_if</span>
+        <a href="/perfil.html" class="text-slate-400 hover:text-white transition text-sm font-semibold">Meu Perfil</a>
+    </div>
+</nav>
+
+<main class="max-w-4xl mx-auto px-4 py-10">
+
+    <div class="mb-8 text-center">
+        <h1 class="text-4xl font-black mb-2">🏆 Ranking</h1>
+        <p class="text-slate-400">Os melhores estudantes da plataforma.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6 bg-slate-900 border border-slate-800 rounded-xl p-1 w-fit mx-auto">
+        <button onclick="mudarAba('usuarios')" id="tab-usuarios"
+                class="px-5 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white transition">
+            👤 Usuários
+        </button>
+        <button onclick="mudarAba('clans')" id="tab-clans"
+                class="px-5 py-2 rounded-lg text-sm font-bold text-slate-400 hover:text-white transition">
+            🏛️ Clãs
+        </button>
+    </div>
+
+    <div id="loading" class="text-center py-20 text-slate-500">
+        <div class="w-10 h-10 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    </div>
+
+    <!-- Ranking usuários -->
+    <div id="aba-usuarios" class="hidden">
+        <!-- Top 3 podium -->
+        <div id="podium" class="grid grid-cols-3 gap-3 mb-8 items-end"></div>
+        <!-- Resto do ranking -->
+        <div id="lista-usuarios" class="space-y-2"></div>
+    </div>
+
+    <!-- Ranking clãs -->
+    <div id="aba-clans" class="hidden space-y-3"></div>
+
+</main>
+
+<script>
+    let abaAtiva = 'usuarios';
+
+    async function carregarRanking() {
+        try {
+            const [resUsers, resClans] = await Promise.all([
+                fetch('/api/ranking/global'),
+                fetch('/api/clan/ranking')
+            ]);
+            const users = await resUsers.json();
+            const clans = await resClans.json();
+
+            document.getElementById('loading').classList.add('hidden');
+            renderizarUsuarios(users);
+            renderizarClans(clans);
+            document.getElementById('aba-usuarios').classList.remove('hidden');
+        } catch(e) {
+            document.getElementById('loading').innerText = 'Erro ao carregar ranking.';
+        }
+    }
+
+    function renderizarUsuarios(users) {
+        // PÓDIO (top 3)
+        const podium = document.getElementById('podium');
+        const top3 = users.slice(0, 3);
+        const ordemPodio = [1, 0, 2]; // 2º, 1º, 3º (visual)
+        const alturasBase = ['pb-4', 'pb-10', 'pb-0'];
+        const tamanhos   = ['text-5xl', 'text-6xl', 'text-4xl'];
+        const medalhas   = ['🥈', '🥇', '🥉'];
+        const bordas     = ['border-slate-500', 'border-yellow-500', 'border-orange-600'];
+        const bgs        = ['bg-slate-800', 'bg-yellow-500/10', 'bg-orange-500/10'];
+
+        podium.innerHTML = ordemPodio.map((idx, visualIdx) => {
+            const u = top3[idx];
+            if (!u) return '<div></div>';
+            return `
+            <div class="flex flex-col items-center ${alturasBase[visualIdx]}">
+                <div class="${tamanhos[visualIdx]} mb-1">${medalhas[visualIdx]}</div>
+                <div class="text-2xl mb-1">${u.patenteIcone}</div>
+                <div class="w-full ${bgs[visualIdx]} border ${bordas[visualIdx]} rounded-2xl p-4 text-center">
+                    <div class="font-black text-sm truncate ${u.souEu ? 'text-blue-400' : 'text-white'}">${u.username}</div>
+                    <div class="text-xs text-slate-400 mt-0.5">${u.pontos.toLocaleString()} pts</div>
+                    ${u.clanIcone ? `<div class="text-xs text-slate-600 mt-0.5">${u.clanIcone} ${u.clanNome}</div>` : ''}
+                    <div class="text-[10px] mt-1 font-bold" style="color:${u.patenteCor}">${u.patente}</div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // LISTA (4+)
+        const lista = document.getElementById('lista-usuarios');
+        lista.innerHTML = users.slice(3).map(u => `
+            <div class="flex items-center gap-3 px-5 py-4 rounded-2xl border transition
+                ${u.souEu
+                    ? 'bg-blue-500/10 border-blue-500/40'
+                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'}">
+
+                <span class="text-slate-500 font-black text-sm w-6 text-center shrink-0">${u.posicao}</span>
+
+                <div class="flex flex-col items-center shrink-0 w-8">
+                    <span class="text-xl">${u.patenteIcone}</span>
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-sm truncate ${u.souEu ? 'text-blue-400' : 'text-white'}">
+                        ${u.username} ${u.souEu ? '<span class="text-xs font-normal text-blue-500">(você)</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-[10px] font-bold" style="color:${u.patenteCor}">${u.patente}</span>
+                        ${u.clanIcone ? `<span class="text-[10px] text-slate-600">${u.clanIcone} ${u.clanNome}</span>` : ''}
+                    </div>
+                </div>
+
+                <div class="text-right shrink-0">
+                    <div class="font-black text-sm text-white">${u.pontos.toLocaleString()}</div>
+                    <div class="text-[10px] text-slate-500">pts</div>
+                </div>
+
+                <div class="text-right shrink-0 hidden sm:block">
+                    <div class="text-xs font-bold ${corPct(u.taxaAcerto)}">${u.taxaAcerto}%</div>
+                    <div class="text-[10px] text-slate-600">acerto</div>
+                </div>
+
+                ${u.streakDias >= 3 ? `<div class="text-sm shrink-0" title="${u.streakDias} dias seguidos">🔥${u.streakDias}</div>` : ''}
+            </div>
+        `).join('');
+
+        if (users.length === 0) {
+            lista.innerHTML = '<div class="text-center text-slate-500 py-10">Nenhum usuário no ranking ainda.</div>';
+        }
+    }
+
+    function renderizarClans(clans) {
+        const container = document.getElementById('aba-clans');
+        if (!clans.length) {
+            container.innerHTML = '<div class="text-center text-slate-500 py-10">Nenhum clã criado ainda.</div>';
+            return;
+        }
+
+        const medalhas = ['🥇', '🥈', '🥉'];
+
+        container.innerHTML = clans.map((c, i) => `
+            <a href="/clan.html?id=${c.id}"
+               class="flex items-center gap-4 px-5 py-4 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-600 transition cursor-pointer">
+                <span class="text-lg w-6 text-center shrink-0">${medalhas[i] || '#' + c.posicao}</span>
+                <div class="text-3xl shrink-0">${c.icone}</div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-black text-sm truncate">${c.nome}</div>
+                    <div class="text-xs text-slate-500 mt-0.5">
+                        👑 ${c.lider} · ${c.totalMembros} membros
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="font-black text-white">${c.totalPontos.toLocaleString()}</div>
+                    <div class="text-[10px] text-slate-500">pts totais</div>
+                </div>
+                <span class="text-slate-600 text-sm">›</span>
+            </a>
+        `).join('');
+    }
+
+    function mudarAba(aba) {
+        abaAtiva = aba;
+        document.getElementById('aba-usuarios').classList.toggle('hidden', aba !== 'usuarios');
+        document.getElementById('aba-clans').classList.toggle('hidden', aba !== 'clans');
+
+        ['usuarios','clans'].forEach(t => {
+            const btn = document.getElementById(`tab-${t}`);
+            btn.className = `px-5 py-2 rounded-lg text-sm font-bold transition ${t === aba
+                ? 'bg-blue-600 text-white'
+                : 'text-slate-400 hover:text-white'}`;
+        });
+    }
+
+    function corPct(pct) {
+        return pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+    }
+
+    window.onload = carregarRanking;
+</script>
+</body>
+</html>

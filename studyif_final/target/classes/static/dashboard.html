@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baralhos - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-5xl mx-auto flex justify-between items-center">
+        <a href="/home.html" class="text-2xl font-black text-blue-500 italic">study_if</a>
+        <div class="flex items-center gap-4">
+            <span id="nome-usuario" class="text-slate-400 text-sm">Carregando...</span>
+            <button onclick="fazerLogout()" class="text-sm text-red-400 hover:text-red-300 font-semibold transition">Sair</button>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-5xl mx-auto px-6 py-10">
+
+    <div class="flex justify-between items-start mb-10">
+        <div>
+            <h1 class="text-4xl font-black mb-1">Meus Baralhos</h1>
+            <p class="text-slate-400">Selecione um baralho para estudar ou criar novos cards.</p>
+        </div>
+        <button onclick="abrirModal()"
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20 shrink-0">
+            + Novo Baralho
+        </button>
+    </div>
+
+    <!-- Grid de decks -->
+    <div id="decks-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+
+    <!-- Estado vazio -->
+    <div id="msg-vazia" class="hidden text-center py-24 bg-slate-900 border border-dashed border-slate-700 rounded-2xl">
+        <div class="text-5xl mb-4">🗂️</div>
+        <h3 class="text-xl font-bold mb-2">Nenhum baralho ainda</h3>
+        <p class="text-slate-500 mb-6">Crie seu primeiro baralho e comece a estudar.</p>
+        <button onclick="abrirModal()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition">
+            + Criar Baralho
+        </button>
+    </div>
+
+</main>
+
+<!-- Modal criar/editar deck -->
+<div id="modal-deck" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
+        <div class="p-6 border-b border-slate-800">
+            <h2 id="modal-titulo" class="text-xl font-bold">Novo Baralho</h2>
+        </div>
+        <div class="p-6">
+            <label class="block text-xs font-black uppercase text-slate-500 mb-2">Nome do Baralho</label>
+            <input type="text" id="input-nome-deck" placeholder="Ex: Matemática - Funções"
+                   class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 transition"
+                   onkeydown="if(event.key==='Enter') salvarDeck()">
+        </div>
+        <div class="p-6 border-t border-slate-800 flex justify-end gap-3">
+            <button onclick="fecharModal()" class="px-5 py-2.5 text-slate-400 hover:text-white transition font-semibold text-sm">Cancelar</button>
+            <button onclick="salvarDeck()" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition">Salvar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let deckIdParaEditar = null;
+
+    async function carregarPagina() {
+        try {
+            const resUser = await fetch('/api/user-data');
+            if (resUser.ok) {
+                const user = await resUser.json();
+                document.getElementById('nome-usuario').innerText = user.username || 'Usuário';
+            }
+        } catch(e) {}
+        await carregarDecks();
+    }
+
+    async function carregarDecks() {
+        try {
+            const res = await fetch('/api/decks');
+            const decks = await res.json();
+            renderizarDecks(decks);
+        } catch(e) {
+            console.error('Erro ao buscar decks:', e);
+        }
+    }
+
+    function renderizarDecks(decks) {
+        const container = document.getElementById('decks-container');
+        const msgVazia  = document.getElementById('msg-vazia');
+        container.innerHTML = '';
+
+        if (!decks || decks.length === 0) {
+            msgVazia.classList.remove('hidden');
+            return;
+        }
+        msgVazia.classList.add('hidden');
+
+        decks.forEach(deck => {
+            const pendentes = deck.pendentesHoje || 0;
+            const total     = deck.total || 0;
+
+            const badgePendentes = pendentes > 0
+                ? `<span class="bg-blue-500 text-white text-xs font-black px-2 py-0.5 rounded-full">${pendentes} para revisar</span>`
+                : `<span class="bg-slate-700 text-slate-400 text-xs font-bold px-2 py-0.5 rounded-full">Em dia ✓</span>`;
+
+            container.innerHTML += `
+                <div class="group bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl p-6 transition-all duration-200 flex flex-col">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold mb-1.5">${deck.name}</h3>
+                            ${badgePendentes}
+                        </div>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="prepararEdicao(${deck.deckId}, '${deck.name.replace(/'/g, "\\'")}')"
+                                    class="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition" title="Editar">✏️</button>
+                            <button onclick="excluirDeck(${deck.deckId})"
+                                    class="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition" title="Excluir">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="text-xs text-slate-500 mb-5">${total} card${total !== 1 ? 's' : ''} no total</div>
+
+                    <div class="mt-auto flex gap-2">
+                        <button onclick="window.location.href='/gerenciar-cards.html?id=${deck.deckId}'"
+                                class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition">
+                            Gerenciar
+                        </button>
+                        <button onclick="window.location.href='/estudar.html?id=${deck.deckId}'"
+                                class="flex-1 py-2.5 ${pendentes > 0 ? 'bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-500/20' : 'bg-slate-700 hover:bg-slate-600'} text-white rounded-xl text-sm font-bold transition">
+                            ${pendentes > 0 ? `Estudar (${pendentes})` : 'Estudar'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    async function salvarDeck() {
+        const nome = document.getElementById('input-nome-deck').value.trim();
+        if (!nome) return alert('Digite um nome!');
+
+        const url    = deckIdParaEditar ? `/api/decks/${deckIdParaEditar}` : '/api/decks';
+        const metodo = deckIdParaEditar ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, {
+                method: metodo,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: nome })
+            });
+            if (res.ok) { fecharModal(); await carregarDecks(); }
+            else alert('Erro ao salvar baralho.');
+        } catch(e) { console.error(e); }
+    }
+
+    async function excluirDeck(id) {
+        if (!confirm('Tem certeza que deseja excluir este baralho e todos os seus cards?')) return;
+        const res = await fetch(`/api/decks/${id}`, { method: 'DELETE' });
+        if (res.ok) carregarDecks();
+        else alert('Erro ao excluir.');
+    }
+
+    function prepararEdicao(id, nomeAtual) {
+        deckIdParaEditar = id;
+        document.getElementById('input-nome-deck').value = nomeAtual;
+        document.getElementById('modal-titulo').innerText = 'Editar Baralho';
+        abrirModal();
+    }
+
+    function abrirModal() {
+        document.getElementById('modal-deck').classList.remove('hidden');
+        document.getElementById('modal-deck').classList.add('flex');
+        setTimeout(() => document.getElementById('input-nome-deck').focus(), 50);
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-deck').classList.add('hidden');
+        document.getElementById('modal-deck').classList.remove('flex');
+        deckIdParaEditar = null;
+        document.getElementById('input-nome-deck').value = '';
+        document.getElementById('modal-titulo').innerText = 'Novo Baralho';
+    }
+
+    function fazerLogout() {
+        const form = document.createElement('form');
+        form.method = 'POST'; form.action = '/logout';
+        document.body.appendChild(form); form.submit();
+    }
+
+    window.onload = carregarPagina;
+</script>
+</body>
+</html>

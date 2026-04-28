@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>study_if — Entrar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:      #080c14;
+            --surface: #0f1623;
+            --border:  #1e2d45;
+            --accent:  #3b82f6;
+            --accent2: #6366f1;
+            --text:    #e2e8f0;
+            --muted:   #64748b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Fundo animado ── */
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-glow::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 55%;
+            height: 55%;
+            background: radial-gradient(ellipse, rgba(59,130,246,0.12) 0%, transparent 70%);
+            animation: drift1 12s ease-in-out infinite alternate;
+        }
+        .bg-glow::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            right: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(ellipse, rgba(99,102,241,0.10) 0%, transparent 70%);
+            animation: drift2 15s ease-in-out infinite alternate;
+        }
+        @keyframes drift1 {
+            from { transform: translate(0,0) scale(1); }
+            to   { transform: translate(5%,8%) scale(1.1); }
+        }
+        @keyframes drift2 {
+            from { transform: translate(0,0) scale(1); }
+            to   { transform: translate(-4%,-6%) scale(1.08); }
+        }
+
+        /* Grade de pontos sutil */
+        .dots {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image: radial-gradient(circle, rgba(99,102,241,0.15) 1px, transparent 1px);
+            background-size: 32px 32px;
+            opacity: 0.4;
+        }
+
+        /* ── Card de login ── */
+        .card {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 420px;
+            margin: 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem 2.25rem;
+            box-shadow: 0 0 0 1px rgba(59,130,246,0.06),
+                        0 32px 64px rgba(0,0,0,0.5),
+                        0 0 80px rgba(59,130,246,0.05);
+            animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Linha decorativa no topo do card */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 10%; right: 10%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+            border-radius: 999px;
+            opacity: 0.7;
+        }
+
+        /* ── Logo / cabeçalho ── */
+        .header { text-align: center; margin-bottom: 2rem; }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #60a5fa, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 0.35rem;
+        }
+
+        .tagline {
+            font-size: 0.82rem;
+            color: var(--muted);
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Divisor ── */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1.75rem 0;
+            color: var(--muted);
+            font-size: 0.75rem;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── Botão Google ── */
+        .btn-google {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: #fff;
+            color: #1f1f1f;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        }
+        .btn-google:hover {
+            background: #f1f3f4;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+            transform: translateY(-1px);
+        }
+        .btn-google:active {
+            transform: translateY(0);
+        }
+        .btn-google svg {
+            flex-shrink: 0;
+        }
+
+        /* ── Rodapé do card ── */
+        .footer-note {
+            margin-top: 1.75rem;
+            text-align: center;
+            font-size: 0.73rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ── Badges de features (opcional, deixa o card mais rico) ── */
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.6rem;
+            margin-bottom: 1.75rem;
+        }
+        .feature {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.65rem 0.5rem;
+            text-align: center;
+        }
+        .feature .icon { font-size: 1.3rem; display: block; margin-bottom: 0.2rem; }
+        .feature .label {
+            font-size: 0.65rem;
+            color: var(--muted);
+            line-height: 1.3;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+<div class="dots"></div>
+
+<div class="card">
+
+    <div class="header">
+        <div class="logo">study_if</div>
+        <p class="tagline">preparação para escolas técnicas · IFSul · Liberato</p>
+    </div>
+
+    <div class="features">
+        <div class="feature">
+            <span class="icon">🧠</span>
+            <span class="label">Repetição espaçada</span>
+        </div>
+        <div class="feature">
+            <span class="icon">📝</span>
+            <span class="label">Simulados reais</span>
+        </div>
+        <div class="feature">
+            <span class="icon">🏆</span>
+            <span class="label">Ranking & clãs</span>
+        </div>
+    </div>
+
+    <a href="/oauth2/authorization/google" class="btn-google">
+        <!-- SVG oficial do Google -->
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Entrar com Google
+    </a>
+
+    <p class="footer-note">
+        Ao entrar, você concorda com o uso dos dados<br>
+        exclusivamente para fins de estudo na plataforma.
+    </p>
+
+</div>
+
+</body>
+</html>

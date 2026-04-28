@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .xp-bar { transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+        .patente-card { transition: all 0.2s ease; }
+        .patente-alcancada { opacity: 1; }
+        .patente-bloqueada { opacity: 0.25; filter: grayscale(1); }
+        @keyframes levelup {
+            0%   { transform: scale(1); }
+            40%  { transform: scale(1.15); }
+            70%  { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        .anim-levelup { animation: levelup 0.6s ease forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+        <a href="/home" class="text-slate-400 hover:text-white transition text-sm font-semibold">← Início</a>
+        <span class="text-xl font-black text-blue-500 italic">study_if</span>
+        <a href="/ranking.html" class="text-slate-400 hover:text-yellow-400 transition text-sm font-semibold">🏆 Ranking</a>
+    </div>
+</nav>
+
+<main class="max-w-4xl mx-auto px-4 py-10 space-y-6">
+
+    <div id="loading" class="text-center py-24 text-slate-500">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    </div>
+
+    <div id="conteudo" class="hidden space-y-6">
+
+        <!-- ===== CARD HERO: PATENTE + XP ===== -->
+        <div id="hero-patente" class="relative overflow-hidden rounded-2xl border p-8">
+            <!-- preenchido via JS -->
+        </div>
+
+        <!-- ===== STATS GRID ===== -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="stat-posicao" class="text-3xl font-black text-yellow-400 mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Posição Global</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="stat-streak" class="text-3xl font-black text-orange-400 mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">🔥 Streak</div>
+                <div id="stat-maior-streak" class="text-xs text-slate-600 mt-1">melhor: –</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="stat-taxa" class="text-3xl font-black mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Taxa de Acerto</div>
+                <div id="stat-total-q" class="text-xs text-slate-600 mt-1">– questões</div>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center">
+                <div id="stat-pontos" class="text-3xl font-black text-blue-400 mb-1">–</div>
+                <div class="text-xs text-slate-500 uppercase font-bold">Pontos</div>
+            </div>
+        </div>
+
+        <!-- ===== CLÃ ===== -->
+        <div id="clan-section"></div>
+
+        <!-- ===== MAPA DE PATENTES ===== -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-base font-bold mb-5 text-slate-300">🎓 Jornada Acadêmica</h2>
+            <div id="mapa-patentes" class="grid grid-cols-3 sm:grid-cols-5 gap-3"></div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Modal de nível up -->
+<div id="modal-levelup" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50">
+    <div class="bg-slate-900 border border-yellow-500/50 rounded-3xl p-10 text-center max-w-sm w-full mx-4 shadow-2xl shadow-yellow-500/20">
+        <div class="text-6xl mb-4 anim-levelup" id="levelup-icone">🎓</div>
+        <div class="text-yellow-400 text-sm font-black uppercase tracking-widest mb-2">Subiu de Patente!</div>
+        <div class="text-3xl font-black text-white mb-1" id="levelup-nome">–</div>
+        <p class="text-slate-400 text-sm mt-3 mb-6">Continue estudando para avançar ainda mais!</p>
+        <button onclick="fecharLevelUp()" class="px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-black rounded-xl transition">
+            Incrível! 🚀
+        </button>
+    </div>
+</div>
+
+<script>
+    async function carregarPerfil() {
+        try {
+            const res = await fetch('/api/ranking/meu-perfil');
+            const data = await res.json();
+            renderizar(data);
+
+            // Checa se acabou de subir de patente (flag no sessionStorage)
+            const levelup = sessionStorage.getItem('levelup_patente');
+            if (levelup) {
+                const p = JSON.parse(levelup);
+                setTimeout(() => mostrarLevelUp(p.icone, p.nome), 500);
+                sessionStorage.removeItem('levelup_patente');
+            }
+        } catch(e) {
+            document.getElementById('loading').innerText = 'Erro ao carregar perfil.';
+        }
+    }
+
+    function renderizar(data) {
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('conteudo').classList.remove('hidden');
+
+        const p = data.patente;
+
+        // ── HERO ──
+        document.getElementById('hero-patente').style.borderColor = p.cor + '40';
+        document.getElementById('hero-patente').style.background =
+            `linear-gradient(135deg, ${p.cor}15 0%, rgba(15,23,42,0.95) 60%)`;
+
+        document.getElementById('hero-patente').innerHTML = `
+            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div class="text-7xl">${p.icone}</div>
+                <div class="flex-1 text-center sm:text-left">
+                    <div class="text-xs font-black uppercase tracking-widest mb-1" style="color:${p.cor}">Patente</div>
+                    <div class="text-4xl font-black mb-1" style="color:${p.cor}">${p.nome}</div>
+                    <div class="text-slate-400 text-sm mb-4">${data.username}</div>
+
+                    <!-- Barra de XP -->
+                    <div class="mb-1 flex justify-between text-xs text-slate-500">
+                        <span>${p.xpAtualNivel.toLocaleString()} XP</span>
+                        <span>${p.xpTotalNivel === 2147483647 ? '∞' : p.xpTotalNivel.toLocaleString() + ' XP'}</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div class="xp-bar h-3 rounded-full" style="width:0%; background:${p.cor}"
+                             data-target="${p.progressoPct}"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-1">
+                        <span class="text-xs text-slate-600">${p.progressoPct}% do nível</span>
+                        ${p.proximaNome ? `
+                        <span class="text-xs text-slate-500">
+                            Próximo: ${p.proximaIcone} ${p.proximaNome}
+                            <span class="text-slate-600">(faltam ${p.xpFalta.toLocaleString()} XP)</span>
+                        </span>` : '<span class="text-xs" style="color:' + p.cor + '">✨ Nível máximo!</span>'}
+                    </div>
+
+                    <div class="mt-3 text-sm text-slate-400">Total: <span class="font-black text-white">${data.xpTotal.toLocaleString()} XP</span></div>
+                </div>
+            </div>
+        `;
+
+        // Anima barra de XP
+        setTimeout(() => {
+            document.querySelectorAll('.xp-bar[data-target]').forEach(el => {
+                el.style.width = el.dataset.target + '%';
+            });
+        }, 100);
+
+        // ── STATS ──
+        const taxaEl = document.getElementById('stat-taxa');
+        taxaEl.innerText = data.taxaAcerto + '%';
+        taxaEl.className = 'text-3xl font-black mb-1 ' + corPct(data.taxaAcerto);
+
+        document.getElementById('stat-posicao').innerText = '#' + data.posicaoGlobal;
+        document.getElementById('stat-streak').innerText = data.streakDias + 'd';
+        document.getElementById('stat-maior-streak').innerText = 'melhor: ' + data.maiorStreak + 'd';
+        document.getElementById('stat-total-q').innerText = data.totalQuestoes.toLocaleString() + ' questões';
+        document.getElementById('stat-pontos').innerText = data.pontos.toLocaleString();
+
+        // ── CLÃ ──
+        const clanSection = document.getElementById('clan-section');
+        if (data.clan) {
+            clanSection.innerHTML = `
+                <a href="/clan.html" class="flex items-center gap-4 bg-slate-900 border border-slate-800 hover:border-slate-600 rounded-2xl p-5 transition group">
+                    <div class="text-4xl">${data.clan.icone}</div>
+                    <div class="flex-1">
+                        <div class="text-xs text-slate-500 uppercase font-bold mb-0.5">Meu Clã</div>
+                        <div class="text-lg font-black">${data.clan.nome}</div>
+                    </div>
+                    <span class="text-slate-600 group-hover:text-white transition text-xl">›</span>
+                </a>`;
+        } else {
+            clanSection.innerHTML = `
+                <div class="bg-slate-900 border border-dashed border-slate-700 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div>
+                        <div class="font-bold mb-1">Você não pertence a nenhum clã</div>
+                        <div class="text-slate-500 text-sm">Entre em um clã para competir em grupo e subir no ranking coletivo.</div>
+                    </div>
+                    <a href="/clan.html" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm whitespace-nowrap transition">
+                        Ver Clãs
+                    </a>
+                </div>`;
+        }
+
+        // ── MAPA DE PATENTES ──
+        const mapa = document.getElementById('mapa-patentes');
+        mapa.innerHTML = data.todasPatentes.map(pat => `
+            <div class="patente-card ${pat.alcancada ? 'patente-alcancada' : 'patente-bloqueada'} bg-slate-800 rounded-xl p-3 text-center border ${pat.alcancada ? 'border-slate-600' : 'border-slate-800'}">
+                <div class="text-2xl mb-1">${pat.icone}</div>
+                <div class="text-[10px] font-black uppercase leading-tight" style="color:${pat.alcancada ? pat.cor : '#475569'}">${pat.nome}</div>
+                ${pat.alcancada ? '' : '<div class="text-[9px] text-slate-600 mt-0.5">🔒</div>'}
+            </div>
+        `).join('');
+    }
+
+    function mostrarLevelUp(icone, nome) {
+        document.getElementById('levelup-icone').innerText = icone;
+        document.getElementById('levelup-nome').innerText = nome;
+        const modal = document.getElementById('modal-levelup');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function fecharLevelUp() {
+        const modal = document.getElementById('modal-levelup');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function corPct(pct) {
+        return pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+    }
+
+    window.onload = carregarPerfil;
+</script>
+</body>
+</html>

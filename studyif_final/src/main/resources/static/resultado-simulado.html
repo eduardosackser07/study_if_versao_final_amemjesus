@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .barra-alt { transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+        .card-questao { scroll-margin-top: 80px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-6 py-4 z-40">
+    <div class="max-w-3xl mx-auto flex justify-between items-center">
+        <a href="/questoes.html" class="text-slate-400 hover:text-white transition text-sm font-semibold">← Voltar</a>
+        <span class="text-xl font-black text-blue-500 italic">study_if</span>
+        <a href="/estatisticas.html" class="text-slate-400 hover:text-purple-400 transition text-sm font-semibold">Estatísticas</a>
+    </div>
+</nav>
+
+<main class="max-w-3xl mx-auto px-4 py-10">
+
+    <!-- Loading -->
+    <div id="loading-state" class="text-center py-24 text-slate-500">
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        Carregando resultado...
+    </div>
+
+    <!-- Conteúdo -->
+    <div id="conteudo" class="hidden space-y-8">
+
+        <!-- HERO PLACAR -->
+        <div id="placar-hero" class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center"></div>
+
+        <!-- RESULTADO POR MATÉRIA -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+            <h2 class="text-base font-bold mb-4 text-slate-300">📚 Resultado por Matéria</h2>
+            <div id="por-materia" class="space-y-3"></div>
+        </div>
+
+        <!-- GABARITO -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-slate-200">Gabarito Detalhado</h2>
+                <div class="flex gap-2 text-xs">
+                    <button onclick="filtrarQuestoes('todas')" id="filtro-todas"
+                            class="px-3 py-1.5 rounded-lg font-bold bg-slate-700 text-white transition">Todas</button>
+                    <button onclick="filtrarQuestoes('erradas')" id="filtro-erradas"
+                            class="px-3 py-1.5 rounded-lg font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">❌ Erradas</button>
+                    <button onclick="filtrarQuestoes('certas')" id="filtro-certas"
+                            class="px-3 py-1.5 rounded-lg font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">✅ Certas</button>
+                </div>
+            </div>
+            <div id="gabarito-container" class="space-y-5"></div>
+        </div>
+
+        <!-- AÇÕES -->
+        <div class="flex flex-col sm:flex-row gap-3 justify-center pb-6">
+            <a href="/questoes.html" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-center transition shadow-lg">Novo Simulado</a>
+            <a href="/estatisticas.html" class="px-8 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-center transition">Ver Estatísticas</a>
+        </div>
+    </div>
+
+</main>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const simuladoId = urlParams.get('id');
+    let dadosGlobais = null;
+    let filtroAtivo = 'todas';
+
+    async function carregarResultado() {
+        if (!simuladoId) { window.location.href = '/questoes.html'; return; }
+        try {
+            const res = await fetch(`/api/simulado/${simuladoId}/detalhe`);
+            if (!res.ok) throw new Error();
+            dadosGlobais = await res.json();
+            renderizar(dadosGlobais);
+        } catch(e) {
+            document.getElementById('loading-state').innerHTML = '<p class="text-red-400">Erro ao carregar resultado.</p>';
+        }
+    }
+
+    function renderizar(data) {
+        const { simulado, respostas, porCategoria } = data;
+        const pct = simulado.totalQuestoes > 0 ? Math.round((simulado.totalAcertos / simulado.totalQuestoes) * 100) : 0;
+
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('conteudo').classList.remove('hidden');
+
+        // HERO
+        const emoji = pct >= 70 ? '🏆' : pct >= 50 ? '💪' : '📚';
+        const msg   = pct >= 70 ? 'Excelente desempenho!' : pct >= 50 ? 'Bom trabalho!' : 'Continue praticando!';
+        document.getElementById('placar-hero').innerHTML = `
+            <div class="text-5xl mb-3">${emoji}</div>
+            <div class="text-7xl font-black ${corPct(pct)} mb-2 leading-none">${pct}%</div>
+            <div class="text-lg text-slate-300 font-semibold mb-1">${msg}</div>
+            <div class="text-slate-500 text-sm mb-2">${simulado.totalAcertos} acertos de ${simulado.totalQuestoes} questões</div>
+            ${simulado.tempoGastoSegundos ? `<div class="text-slate-600 text-xs">⏱ ${formatarTempo(simulado.tempoGastoSegundos)}</div>` : ''}
+        `;
+
+        // POR MATÉRIA
+        const pm = document.getElementById('por-materia');
+        const entries = Object.entries(porCategoria);
+        if (!entries.length) {
+            pm.innerHTML = '<p class="text-slate-500 text-sm">Sem dados por matéria.</p>';
+        } else {
+            pm.innerHTML = entries.map(([nome, d]) => {
+                const p = d.total > 0 ? Math.round((d.acertos / d.total) * 100) : 0;
+                return `
+                <div class="bg-slate-800 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-semibold text-sm">${nome}</span>
+                        <div>
+                            <span class="font-black ${corPct(p)}">${p}%</span>
+                            <span class="text-slate-500 text-xs ml-2">${d.acertos}/${d.total}</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-2">
+                        <div class="${barCor(p)} h-2 rounded-full barra-alt" style="width:0%" data-target="${p}"></div>
+                    </div>
+                </div>`;
+            }).join('');
+            setTimeout(() => animarBarras(), 100);
+        }
+
+        // GABARITO
+        renderizarGabarito(respostas);
+    }
+
+    function renderizarGabarito(respostas) {
+        const letras = ['A','B','C','D','E'];
+        const container = document.getElementById('gabarito-container');
+
+        container.innerHTML = respostas.map((item, idx) => {
+            const r            = item.questaoResposta;
+            const q            = r.question;
+            const acertou      = r.acertou;
+            const altEscolhida = r.alternativaEscolhidaId;
+            const dificuldade  = item.dificuldade;
+            const taxaGlobal   = item.taxaAcertoGlobal;
+            const totalResp    = item.totalRespostas;
+            const taxaPessoal  = item.taxaAcertoPessoal;
+            const tentativas   = item.tentativasPessoais;
+            const distribuicao = item.distribuicaoAlts || [];
+
+            const difMap = {
+                FACIL:   { label: 'Fácil',   css: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+                MEDIO:   { label: 'Médio',   css: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30' },
+                DIFICIL: { label: 'Difícil', css: 'text-red-400 bg-red-500/10 border-red-500/30' }
+            };
+            const dif = difMap[dificuldade] || { label: '-', css: 'text-slate-500 bg-slate-800 border-slate-700' };
+
+            const bordaCard = acertou ? 'border-emerald-800/50' : altEscolhida ? 'border-red-900/50' : 'border-slate-800';
+
+            // Alternativas
+            const altsHtml = distribuicao.map((alt, i) => {
+                const isCorreta = alt.correct;
+                const isMarcada = alt.alternativeId === altEscolhida;
+                const isErrada  = isMarcada && !isCorreta;
+                const letraDisplay = alt.letra || letras[distribuicao.findIndex(d => d.alternativeId === alt.alternativeId)] || '?';
+
+                let rowCss    = 'border-slate-700/60 bg-slate-900/60';
+                let letraCss  = 'border-slate-600 bg-slate-800 text-slate-400';
+                let marcador  = '';
+                let pctCss    = 'text-slate-500';
+
+                if (isCorreta) {
+                    rowCss   = 'border-emerald-500/40 bg-emerald-500/5';
+                    letraCss = 'border-emerald-500 bg-emerald-500 text-white';
+                    marcador = `<span class="text-emerald-400 font-black text-sm shrink-0">✓</span>`;
+                    pctCss   = 'text-emerald-400';
+                }
+                if (isErrada) {
+                    rowCss   = 'border-red-500/40 bg-red-500/5';
+                    letraCss = 'border-red-500 bg-red-500/20 text-red-400';
+                    marcador = `<span class="text-red-400 font-black text-sm shrink-0">✗</span>`;
+                    pctCss   = 'text-red-400';
+                }
+
+                const barColor = isCorreta ? 'bg-emerald-500' : isErrada ? 'bg-red-500' : 'bg-slate-600';
+                const pct = alt.pctEscolha || 0;
+
+                return `
+                <div class="border rounded-xl overflow-hidden ${rowCss}">
+                    <div class="flex items-start gap-3 p-3">
+                        <span class="w-7 h-7 rounded-lg border ${letraCss} flex items-center justify-center text-xs font-black shrink-0 mt-0.5">${letraDisplay}</span>
+                        <span class="text-sm flex-1 leading-relaxed text-slate-200">${alt.altText}</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span class="text-xs font-bold w-8 text-right ${pctCss}">${pct}%</span>
+                            ${marcador}
+                        </div>
+                    </div>
+                    <div class="h-1 w-full bg-slate-800/80">
+                        <div class="${barColor} h-1 barra-alt opacity-60" style="width:0%" data-target="${pct}"></div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Gauge SVG helper
+            const gaugeColor = (v) => v >= 70 ? '#10b981' : v >= 50 ? '#f59e0b' : '#ef4444';
+            const gaugeDash  = (v) => `${(v / 100) * 144.5} 144.5`;
+
+            // Top 3 mais marcadas
+            const top3 = [...distribuicao].sort((a,b) => b.pctEscolha - a.pctEscolha).slice(0,3);
+            const top3Html = top3.map((alt, i) => {
+                const ltr = alt.letra || letras[distribuicao.findIndex(d => d.alternativeId === alt.alternativeId)] || '?';
+                const isc = alt.correct;
+                return `
+                <div class="flex items-center gap-1.5 mb-1.5">
+                    <span class="w-5 h-5 rounded text-[9px] font-black flex items-center justify-center shrink-0 ${isc ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-400'}">${ltr}</span>
+                    <div class="flex-1 bg-slate-800 rounded-full h-1.5">
+                        <div class="${isc ? 'bg-emerald-500' : 'bg-slate-500'} h-1.5 rounded-full barra-alt" style="width:0%" data-target="${alt.pctEscolha}"></div>
+                    </div>
+                    <span class="text-[10px] font-bold w-7 text-right ${isc ? 'text-emerald-400' : 'text-slate-500'}">${alt.pctEscolha}%</span>
+                </div>`;
+            }).join('');
+
+            return `
+            <div id="questao-${idx}" class="card-questao bg-slate-900 border ${bordaCard} rounded-2xl overflow-hidden"
+                 data-acertou="${acertou}" data-respondida="${!!altEscolhida}">
+
+                <!-- Cabeçalho -->
+                <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-900/80">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-black text-slate-600 uppercase">Q${idx+1}</span>
+                        ${q.category ? `<span class="text-xs px-2 py-0.5 bg-slate-800 rounded-full text-slate-400 border border-slate-700/60">${q.category.name}</span>` : ''}
+                        ${q.fonte ? `<span class="text-xs text-slate-600">${q.fonte}${q.ano ? ' · '+q.ano : ''}</span>` : ''}
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full border ${dif.css}">${dif.label}</span>
+                    </div>
+                    <span class="text-xl">${acertou ? '✅' : altEscolhida ? '❌' : '⬜'}</span>
+                </div>
+
+                <!-- Enunciado -->
+                <div class="px-5 py-4">
+                    <p class="text-slate-200 leading-relaxed text-sm">${q.questionText}</p>
+                </div>
+
+                <!-- Alternativas -->
+                <div class="px-5 pb-4 space-y-2">${altsHtml}</div>
+                ${!altEscolhida ? '<p class="px-5 pb-3 text-xs text-slate-600 italic">⬜ Não respondida</p>' : ''}
+
+                <!-- PAINEL ESTATÍSTICAS estilo Ferretto -->
+                <div class="border-t border-slate-800 bg-black/30 px-5 py-4">
+                    <div class="grid grid-cols-3 gap-4 items-start">
+
+                        <!-- % Acerto Global -->
+                        <div class="text-center">
+                            <div class="relative inline-flex items-center justify-center w-16 h-16 mb-1.5">
+                                <svg class="w-16 h-16 -rotate-90" viewBox="0 0 56 56">
+                                    <circle cx="28" cy="28" r="23" stroke="#1e293b" stroke-width="5" fill="none"/>
+                                    <circle cx="28" cy="28" r="23" stroke="${gaugeColor(taxaGlobal)}" stroke-width="5" fill="none"
+                                            stroke-dasharray="${gaugeDash(taxaGlobal)}" stroke-linecap="round"/>
+                                </svg>
+                                <span class="absolute text-xs font-black ${corPct(taxaGlobal)}">${taxaGlobal}%</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold leading-tight">Acerto<br>Geral</div>
+                            <div class="text-[10px] text-slate-600 mt-0.5">${totalResp} resp.</div>
+                        </div>
+
+                        <!-- % Acerto Pessoal -->
+                        <div class="text-center">
+                            <div class="relative inline-flex items-center justify-center w-16 h-16 mb-1.5">
+                                <svg class="w-16 h-16 -rotate-90" viewBox="0 0 56 56">
+                                    <circle cx="28" cy="28" r="23" stroke="#1e293b" stroke-width="5" fill="none"/>
+                                    <circle cx="28" cy="28" r="23" stroke="${gaugeColor(taxaPessoal)}" stroke-width="5" fill="none"
+                                            stroke-dasharray="${tentativas > 0 ? gaugeDash(taxaPessoal) : '0 144.5'}" stroke-linecap="round"/>
+                                </svg>
+                                <span class="absolute text-xs font-black ${tentativas > 0 ? corPct(taxaPessoal) : 'text-slate-600'}">${tentativas > 0 ? taxaPessoal+'%' : '–'}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold leading-tight">Seu<br>Acerto</div>
+                            <div class="text-[10px] text-slate-600 mt-0.5">${tentativas} tent.</div>
+                        </div>
+
+                        <!-- Alternativas mais marcadas -->
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">+ Marcadas</div>
+                            ${top3Html}
+                        </div>
+
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+
+        setTimeout(() => animarBarras(), 150);
+    }
+
+    function filtrarQuestoes(tipo) {
+        filtroAtivo = tipo;
+        ['todas','erradas','certas'].forEach(t => {
+            const btn = document.getElementById(`filtro-${t}`);
+            btn.className = `px-3 py-1.5 rounded-lg font-bold transition text-xs ${t === tipo ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`;
+        });
+        document.querySelectorAll('[id^="questao-"]').forEach(card => {
+            const acertou    = card.dataset.acertou === 'true';
+            const respondida = card.dataset.respondida === 'true';
+            let ocultar = false;
+            if (tipo === 'certas'  && !acertou)              ocultar = true;
+            if (tipo === 'erradas' && (acertou || !respondida)) ocultar = true;
+            card.classList.toggle('hidden', ocultar);
+        });
+    }
+
+    function animarBarras() {
+        document.querySelectorAll('.barra-alt[data-target]').forEach(el => {
+            el.style.width = el.dataset.target + '%';
+        });
+    }
+
+    function corPct(pct) {
+        return pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+    }
+    function barCor(pct) {
+        return pct >= 70 ? 'bg-emerald-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+    }
+    function formatarTempo(segundos) {
+        const h = Math.floor(segundos / 3600);
+        const m = Math.floor((segundos % 3600) / 60);
+        return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    }
+
+    window.onload = carregarResultado;
+</script>
+</body>
+</html>

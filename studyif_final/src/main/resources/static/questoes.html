@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questões - study_if</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen font-sans">
+
+<nav class="bg-slate-900 border-b border-slate-800 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <a href="/home" class="text-2xl font-black text-blue-500 italic">study_if</a>
+        <div class="flex items-center gap-4">
+            <span id="nome-usuario" class="text-slate-400 text-sm">Carregando...</span>
+            <button onclick="fazerLogout()" class="text-sm text-red-400 hover:text-red-300 font-semibold transition">Sair</button>
+        </div>
+    </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-10">
+
+    <!-- Header -->
+    <div class="mb-10">
+        <h1 class="text-4xl font-black mb-2">Questões & Simulados</h1>
+        <p class="text-slate-400">Pratique com questões de múltipla escolha e teste seu desempenho.</p>
+    </div>
+
+    <!-- Cards de ação -->
+    <div class="grid md:grid-cols-3 gap-6 mb-12">
+
+        <!-- Simulado Personalizado -->
+        <div onclick="abrirModalPersonalizado()"
+             class="group bg-slate-900 border border-slate-800 hover:border-blue-500 p-8 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/10">
+            <div class="w-14 h-14 bg-blue-500/20 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <span class="text-3xl">🎯</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Simulado Personalizado</h2>
+            <p class="text-slate-400 text-sm leading-relaxed">Escolha as matérias, quantidade de questões e tempo. Do seu jeito.</p>
+            <span class="inline-block mt-4 text-blue-400 text-sm font-semibold group-hover:translate-x-1 transition-transform">Montar simulado →</span>
+        </div>
+
+        <!-- Simuladão IFSul -->
+        <div onclick="iniciarIFSul()"
+             class="group bg-slate-900 border border-slate-800 hover:border-emerald-500 p-8 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10">
+            <div class="w-14 h-14 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <span class="text-3xl">🏆</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Simuladão IFSul</h2>
+            <p class="text-slate-400 text-sm leading-relaxed">10 questões de cada matéria. 4 horas. Formato oficial da prova do IFSul.</p>
+            <span class="inline-block mt-4 text-emerald-400 text-sm font-semibold group-hover:translate-x-1 transition-transform">Iniciar agora →</span>
+        </div>
+
+        <!-- Estatísticas -->
+        <a href="/estatisticas.html"
+           class="group bg-slate-900 border border-slate-800 hover:border-purple-500 p-8 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/10 block">
+            <div class="w-14 h-14 bg-purple-500/20 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <span class="text-3xl">📊</span>
+            </div>
+            <h2 class="text-xl font-bold mb-2">Meu Desempenho</h2>
+            <p class="text-slate-400 text-sm leading-relaxed">Veja sua taxa de acerto por matéria, evolução e histórico completo.</p>
+            <span class="inline-block mt-4 text-purple-400 text-sm font-semibold group-hover:translate-x-1 transition-transform">Ver estatísticas →</span>
+        </a>
+    </div>
+
+    <!-- Histórico recente -->
+    <div>
+        <h2 class="text-xl font-bold mb-4 text-slate-300">Últimos Simulados</h2>
+        <div id="historico-container">
+            <div class="text-slate-500 text-sm italic">Carregando histórico...</div>
+        </div>
+    </div>
+
+</main>
+
+<!-- Modal Simulado Personalizado -->
+<div id="modal-personalizado" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-xl shadow-2xl">
+        <div class="p-6 border-b border-slate-800">
+            <h2 class="text-xl font-bold">🎯 Montar Simulado</h2>
+            <p class="text-slate-400 text-sm mt-1">Escolha as matérias e configure seu simulado.</p>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <!-- Matérias -->
+            <div>
+                <label class="block text-xs font-black uppercase text-slate-400 mb-3">Matérias e Quantidade de Questões</label>
+                <div id="materias-lista" class="space-y-3">
+                    <!-- preenchido via JS -->
+                    <div class="text-slate-500 text-sm">Carregando matérias...</div>
+                </div>
+            </div>
+
+            <!-- Tempo -->
+            <div>
+                <label class="block text-xs font-black uppercase text-slate-400 mb-2">Tempo Limite</label>
+                <div class="flex gap-3 items-center">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="check-tempo" onchange="toggleTempo()"
+                               class="w-4 h-4 accent-blue-500">
+                        <span class="text-sm text-slate-300">Definir tempo</span>
+                    </label>
+                    <div id="input-tempo-wrap" class="hidden flex items-center gap-2">
+                        <input type="number" id="input-tempo" min="1" max="480" value="60" placeholder="minutos"
+                               class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 w-24 text-sm outline-none focus:border-blue-500 transition">
+                        <span class="text-slate-400 text-sm">minutos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo -->
+            <div id="resumo-simulado" class="hidden bg-slate-800 rounded-xl p-4 text-sm">
+                <span class="text-slate-400">Total de questões: </span>
+                <span id="resumo-total" class="font-bold text-white">0</span>
+            </div>
+        </div>
+
+        <div class="p-6 border-t border-slate-800 flex justify-end gap-3">
+            <button onclick="fecharModal()" class="px-5 py-2.5 text-slate-400 hover:text-white transition text-sm font-semibold">Cancelar</button>
+            <button onclick="iniciarPersonalizado()" id="btn-iniciar"
+                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-lg disabled:opacity-50">
+                Iniciar Simulado
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading overlay -->
+<div id="loading" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50">
+    <div class="text-center">
+        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p class="text-slate-300">Preparando simulado...</p>
+    </div>
+</div>
+
+<script>
+    let categoriasDisponiveis = [];
+
+    async function carregarPagina() {
+        // Carrega usuário
+        try {
+            const res = await fetch('/api/user-data');
+            if (res.ok) {
+                const user = await res.json();
+                document.getElementById('nome-usuario').innerText = user.username || 'Usuário';
+            }
+        } catch(e) {}
+
+        // Carrega categorias
+        try {
+            const res = await fetch('/api/questoes/categorias');
+            categoriasDisponiveis = await res.json();
+            renderizarMaterias();
+        } catch(e) {
+            document.getElementById('materias-lista').innerHTML = '<p class="text-red-400 text-sm">Erro ao carregar matérias.</p>';
+        }
+
+        // Carrega histórico
+        await carregarHistorico();
+    }
+
+    function renderizarMaterias() {
+        const container = document.getElementById('materias-lista');
+        if (!categoriasDisponiveis.length) {
+            container.innerHTML = '<p class="text-slate-500 text-sm italic">Nenhuma matéria cadastrada ainda.</p>';
+            return;
+        }
+        container.innerHTML = categoriasDisponiveis.map(cat => `
+            <div class="flex items-center justify-between bg-slate-800 rounded-xl px-4 py-3">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="cat-${cat.categoryId}" value="${cat.categoryId}"
+                           onchange="atualizarResumo()"
+                           class="w-4 h-4 accent-blue-500 cursor-pointer">
+                    <label for="cat-${cat.categoryId}" class="text-sm font-semibold cursor-pointer">${cat.name}</label>
+                    <span class="text-xs text-slate-500">(${cat.total} disponíveis)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="qtd-${cat.categoryId}" min="1" max="${cat.total}" value="10"
+                           onchange="atualizarResumo()"
+                           class="bg-slate-700 border border-slate-600 rounded-lg px-2 py-1 w-16 text-sm text-center outline-none focus:border-blue-500 transition disabled:opacity-40"
+                           disabled>
+                    <span class="text-xs text-slate-500">questões</span>
+                </div>
+            </div>
+        `).join('');
+
+        // Habilita/desabilita input de quantidade conforme checkbox
+        categoriasDisponiveis.forEach(cat => {
+            const chk = document.getElementById(`cat-${cat.categoryId}`);
+            const qtd = document.getElementById(`qtd-${cat.categoryId}`);
+            chk.addEventListener('change', () => {
+                qtd.disabled = !chk.checked;
+                atualizarResumo();
+            });
+        });
+    }
+
+    function atualizarResumo() {
+        let total = 0;
+        categoriasDisponiveis.forEach(cat => {
+            const chk = document.getElementById(`cat-${cat.categoryId}`);
+            const qtd = document.getElementById(`qtd-${cat.categoryId}`);
+            if (chk && chk.checked) {
+                total += parseInt(qtd.value) || 0;
+            }
+        });
+        const resumo = document.getElementById('resumo-simulado');
+        const totalEl = document.getElementById('resumo-total');
+        if (total > 0) {
+            resumo.classList.remove('hidden');
+            totalEl.innerText = total;
+        } else {
+            resumo.classList.add('hidden');
+        }
+    }
+
+    function toggleTempo() {
+        const checked = document.getElementById('check-tempo').checked;
+        const wrap = document.getElementById('input-tempo-wrap');
+        wrap.classList.toggle('hidden', !checked);
+    }
+
+    function abrirModalPersonalizado() {
+        document.getElementById('modal-personalizado').classList.remove('hidden');
+        document.getElementById('modal-personalizado').classList.add('flex');
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-personalizado').classList.add('hidden');
+        document.getElementById('modal-personalizado').classList.remove('flex');
+    }
+
+    async function iniciarPersonalizado() {
+        const materias = {};
+        categoriasDisponiveis.forEach(cat => {
+            const chk = document.getElementById(`cat-${cat.categoryId}`);
+            const qtd = document.getElementById(`qtd-${cat.categoryId}`);
+            if (chk && chk.checked) {
+                materias[cat.categoryId] = parseInt(qtd.value) || 10;
+            }
+        });
+
+        if (Object.keys(materias).length === 0) {
+            alert('Selecione ao menos uma matéria!');
+            return;
+        }
+
+        let tempoLimiteMinutos = null;
+        if (document.getElementById('check-tempo').checked) {
+            tempoLimiteMinutos = parseInt(document.getElementById('input-tempo').value) || null;
+        }
+
+        mostrarLoading(true);
+        try {
+            const res = await fetch('/api/simulado/iniciar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo: 'PERSONALIZADO', materias, tempoLimiteMinutos })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.erro || 'Erro ao criar simulado.'); mostrarLoading(false); return; }
+
+            // Salva os dados do simulado no sessionStorage e redireciona
+            sessionStorage.setItem('simulado_dados', JSON.stringify(data));
+            window.location.href = '/simulado.html';
+        } catch(e) {
+            alert('Erro de conexão.');
+            mostrarLoading(false);
+        }
+    }
+
+    async function iniciarIFSul() {
+        if (!confirm('Iniciar o Simuladão IFSul?\n\n10 questões de cada matéria • 4 horas de duração\n\nBoa sorte! 🍀')) return;
+
+        mostrarLoading(true);
+        try {
+            const res = await fetch('/api/simulado/iniciar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tipo: 'IFSUL' })
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.erro || 'Erro.'); mostrarLoading(false); return; }
+
+            sessionStorage.setItem('simulado_dados', JSON.stringify(data));
+            window.location.href = '/simulado.html';
+        } catch(e) {
+            alert('Erro de conexão.');
+            mostrarLoading(false);
+        }
+    }
+
+    async function carregarHistorico() {
+        const container = document.getElementById('historico-container');
+        try {
+            const res = await fetch('/api/simulado/historico');
+            const lista = await res.json();
+            if (!lista.length) {
+                container.innerHTML = '<div class="bg-slate-900 border border-dashed border-slate-700 rounded-xl p-8 text-center text-slate-500 text-sm">Você ainda não realizou nenhum simulado.</div>';
+                return;
+            }
+            container.innerHTML = lista.slice(0,5).map(s => {
+                const pct = s.totalQuestoes > 0 ? Math.round((s.totalAcertos / s.totalQuestoes) * 100) : 0;
+                const cor = pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400';
+                const barCor = pct >= 70 ? 'bg-emerald-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+                return `
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-slate-600 transition cursor-pointer mb-3"
+                         onclick="window.location.href='/resultado-simulado.html?id=${s.id}'">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-black uppercase px-2 py-0.5 rounded-full ${s.tipo === 'IFSUL' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}">${s.tipo}</span>
+                                <span class="text-xs text-slate-500">${new Date(s.criadoEm).toLocaleDateString('pt-BR')}</span>
+                            </div>
+                            <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2">
+                                <div class="${barCor} h-1.5 rounded-full transition-all" style="width:${pct}%"></div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-black ${cor}">${pct}%</div>
+                            <div class="text-xs text-slate-500">${s.totalAcertos}/${s.totalQuestoes}</div>
+                        </div>
+                        <span class="text-slate-600">›</span>
+                    </div>
+                `;
+            }).join('');
+        } catch(e) {
+            container.innerHTML = '<div class="text-slate-500 text-sm">Erro ao carregar histórico.</div>';
+        }
+    }
+
+    function mostrarLoading(show) {
+        const el = document.getElementById('loading');
+        el.classList.toggle('hidden', !show);
+        el.classList.toggle('flex', show);
+    }
+
+    function fazerLogout() {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/logout';
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    window.onload = carregarPagina;
+</script>
+</body>
+</html>
