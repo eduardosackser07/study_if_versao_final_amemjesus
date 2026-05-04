@@ -21,7 +21,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/", "/login.html", "/login",
+                    "/", "/index.html", "/login",
                     "/home.html", "/dashboard.html",
                     "/questoes.html", "/simulado.html",
                     "/resultado-simulado.html", "/estatisticas.html",
@@ -32,14 +32,14 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
-                .loginPage("/login.html")
+                .loginPage("/index.html")
                 .userInfoEndpoint(userInfo -> userInfo
                     .userService(customOAuth2UserService))
                 .defaultSuccessUrl("/home.html", true)
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessUrl("/login.html")
+                .logoutSuccessUrl("/index.html")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
                 .permitAll()
